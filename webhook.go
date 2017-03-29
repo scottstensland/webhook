@@ -65,6 +65,7 @@ func lenLoadedHooks() int {
 }
 
 func main() {
+
 	flag.Var(&hooksFiles, "hooks", "path to the json file containing defined hooks the webhook should serve, use multiple times to load from different files")
 	flag.Var(&responseHeaders, "header", "response header to return, specified in format name=value, use multiple times to set multiple headers")
 
@@ -173,6 +174,9 @@ func main() {
 		hooksURL = "/" + *hooksURLPrefix + "/{id}"
 	}
 
+	fmt.Println("hooksURL is ")
+	fmt.Println(hooksURL)
+
 	router.HandleFunc(hooksURL, hookHandler)
 
 	n.UseHandler(router)
@@ -191,6 +195,10 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 	for _, responseHeader := range responseHeaders {
 		w.Header().Set(responseHeader.Name, responseHeader.Value)
 	}
+
+	fmt.Println("\nhere is http.Request")
+	fmt.Println( r )
+	fmt.Println("\n")
 
 	id := mux.Vars(r)["id"]
 
