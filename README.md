@@ -1,4 +1,12 @@
 [![ghit.me](https://ghit.me/badge.svg?repo=adnanh/webhook)](https://ghit.me/repo/adnanh/webhook) [![Join the chat at https://gitter.im/adnanh/webhook](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/adnanh/webhook?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Flattr this](https://button.flattr.com/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=adnanh&url=https%3A%2F%2Fwww.github.com%2Fadnanh%2Fwebhook) [Donate via PayPal](https://paypal.me/hookdoo) | [Patreon page](https://www.patreon.com/webhook)
+
+
+# Hookdoo
+<a href="https://www.hookdoo.com/?github"><img src="https://my.hookdoo.com/logo/logo-dark-96.png" alt="hookdoo" align="left" /></a>
+ 
+If you don't have time to waste configuring, hosting, debugging and maintaining your webhook instance, we offer a __SaaS__ solution that has all of the capabilities webhook provides, plus a lot more, and all that packaged in a nice friendly web interface. If you are interested, find out more at [hookdoo website](https://www.hookdoo.com/?ref=github-webhook-readme). If you have any questions, you can contact us at info@hookdoo.com
+
+
 # What is webhook?
 [webhook](https://github.com/adnanh/webhook/) is a lightweight configurable tool written in Go, that allows you to easily create HTTP endpoints (hooks) on your server, which you can use to execute configured commands. You can also pass data from the HTTP request (such as headers, payload or query variables) to your commands. [webhook](https://github.com/adnanh/webhook/) also allows you to specify rules which have to be satisfied in order for the hook to be triggered.
 
@@ -29,6 +37,9 @@ to get the latest version of the [webhook](https://github.com/adnanh/webhook/).
 ### Using package manager
 #### Debian "sid"
 If you are using unstable version of Debian linux ("sid"), you can install webhook using `apt-get install webhook` which will install community packaged version (thanks [@freeekanayaka](https://github.com/freeekanayaka)) from https://packages.debian.org/sid/webhook
+
+### Download prebuilt binaries
+Prebuilt binaries for different architectures are available at [GitHub Releases](https://github.com/adnanh/webhook/releases).
 
 ## Configuration
 Next step is to define some hooks you want [webhook](https://github.com/adnanh/webhook/) to serve. Begin by creating an empty file named `hooks.json`. This file will contain an array of hooks the [webhook](https://github.com/adnanh/webhook/) will serve. Check [Hook definition page](https://github.com/adnanh/webhook/wiki/Hook-Definition) to see the detailed description of what properties a hook can contain, and how to use them.
