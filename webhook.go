@@ -12,12 +12,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/adnanh/webhook/hook"
+	// "github.com/adnanh/webhook/hook"
+	"github.com/scottstensland/webhook/hook"
 
 	"github.com/codegangsta/negroni"
 	"github.com/gorilla/mux"
 
 	fsnotify "gopkg.in/fsnotify.v1"
+
+	"net/http/httputil"
 )
 
 const (
@@ -201,6 +204,14 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("\nhere is http.Request .....  \n\n")
 	fmt.Println( r )
 	fmt.Println("\n")
+
+	// Save a copy of this request for debugging.
+	requestDump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+	  fmt.Println(err)
+	}
+	fmt.Println(string(requestDump))
+
 
 	id := mux.Vars(r)["id"]
 
