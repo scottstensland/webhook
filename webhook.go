@@ -19,6 +19,8 @@ import (
 	"github.com/gorilla/mux"
 
 	fsnotify "gopkg.in/fsnotify.v1"
+
+	"net/http/httputil"
 )
 
 const (
@@ -209,6 +211,7 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 	  fmt.Println(err)
 	}
 	fmt.Println(string(requestDump))
+
 
 	id := mux.Vars(r)["id"]
 
