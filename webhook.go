@@ -19,8 +19,6 @@ import (
 	"github.com/gorilla/mux"
 
 	fsnotify "gopkg.in/fsnotify.v1"
-
-	"net/http/httputil"
 )
 
 const (
@@ -201,18 +199,6 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(responseHeader.Name, responseHeader.Value)
 	}
 
-	fmt.Println("\nhere is http.Request .....  \n\n")
-	fmt.Println( r )
-	fmt.Println("\n")
-
-	// Save a copy of this request for debugging.
-	requestDump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-	  fmt.Println(err)
-	}
-	fmt.Println(string(requestDump))
-
-
 	id := mux.Vars(r)["id"]
 
 	if matchedHook := matchLoadedHook(id); matchedHook != nil {
@@ -251,41 +237,6 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 				payload = valuesToMap(fd)
 			}
 		}
-
-		//   top of own
-
-		for currkey, currvalue := range payload {
-
-			if currkey == "ref" {
-
-				if currstr, ok := currvalue.(string); ok {
-
-					val_chunks := strings.Split(currstr, "/")
-					size_chunks := len(val_chunks)
-
-					if size_chunks != 3 {
-
-						err_msg := "ERROR - ref must point to value with 3 chunks"
-						fmt.Println( err_msg )
-						panic( err_msg )
-					}
-
-					branch_from_msg := val_chunks[2]
-
-					only_rebuild_this_branch := os.Getenv("GKE_GIT_BRANCH" )	// GKE_GIT_BRANCH=plans
-
-					if branch_from_msg == only_rebuild_this_branch {
-
-						fmt.Printf("YES - seeing branch match -->%s<-- so issue rebuild\n", only_rebuild_this_branch)
-					} else {
-						fmt.Println("NO - branch did not match")
-						return
-					}
-				}
-			}
-		}
-
-		//   bottom of own
 
 		// handle hook
 		if errors := matchedHook.ParseJSONParameters(&headers, &query, &payload); errors != nil {
