@@ -28,7 +28,7 @@ const (
 var (
 	ip                 = flag.String("ip", "0.0.0.0", "ip the webhook should serve hooks on")
 	// port               = flag.Int("port", 9000, "port the webhook should serve hooks on")
-	port               = flag.Int("port", 9100, "port the webhook should serve hooks on")
+	port               = flag.Int("port", 9000, "port the webhook should serve hooks on")
 	verbose            = flag.Bool("verbose", false, "show verbose output")
 	noPanic            = flag.Bool("nopanic", false, "do not panic if hooks cannot be loaded when webhook is not running in verbose mode")
 	hotReload          = flag.Bool("hotreload", false, "watch hooks file for changes and reload them automatically")
