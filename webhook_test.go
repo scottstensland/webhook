@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -17,64 +20,151 @@ import (
 	"github.com/adnanh/webhook/hook"
 )
 
+func TestStaticParams(t *testing.T) {
+
+	spHeaders := make(map[string]interface{})
+	spHeaders["User-Agent"] = "curl/7.54.0"
+	spHeaders["Accept"] = "*/*"
+
+	// case 1: correct entry
+	spHook := &hook.Hook{
+		ID:                      "static-params-ok",
+		ExecuteCommand:          "/bin/echo",
+		CommandWorkingDirectory: "/tmp",
+		ResponseMessage:         "success",
+		CaptureCommandOutput:    true,
+		PassArgumentsToCommand: []hook.Argument{
+			hook.Argument{Source: "string", Name: "passed"},
+		},
+	}
+
+	b := &bytes.Buffer{}
+	log.SetOutput(b)
+
+	s, err := handleHook(spHook, "test", &spHeaders, &map[string]interface{}{}, &map[string]interface{}{}, &[]byte{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	matched, _ := regexp.MatchString("(?s).*command output: passed.*static-params-ok", b.String())
+	if !matched {
+		t.Fatalf("Unexpected log output:\n%s", b)
+	}
+
+	// case 2: binary with spaces in its name
+	err = os.Symlink("/bin/echo", "/tmp/with space")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	defer os.Remove("/tmp/with space")
+
+	spHook = &hook.Hook{
+		ID:                      "static-params-name-space",
+		ExecuteCommand:          "/tmp/with space",
+		CommandWorkingDirectory: "/tmp",
+		ResponseMessage:         "success",
+		CaptureCommandOutput:    true,
+		PassArgumentsToCommand: []hook.Argument{
+			hook.Argument{Source: "string", Name: "passed"},
+		},
+	}
+
+	b = &bytes.Buffer{}
+	log.SetOutput(b)
+
+	s, err = handleHook(spHook, "test", &spHeaders, &map[string]interface{}{}, &map[string]interface{}{}, &[]byte{})
+	if err != nil {
+		t.Fatalf("Unexpected error: %v\n", err)
+	}
+	matched, _ = regexp.MatchString("(?s)command output: .*static-params-name-space", b.String())
+	if !matched {
+		t.Fatalf("Unexpected log output:\n%sn", b)
+	}
+
+	// case 3: parameters specified in execute-command
+	spHook = &hook.Hook{
+		ID:                      "static-params-bad",
+		ExecuteCommand:          "/bin/echo success",
+		CommandWorkingDirectory: "/tmp",
+		ResponseMessage:         "success",
+		CaptureCommandOutput:    true,
+		PassArgumentsToCommand: []hook.Argument{
+			hook.Argument{Source: "string", Name: "failed"},
+		},
+	}
+
+	b = &bytes.Buffer{}
+	log.SetOutput(b)
+
+	s, err = handleHook(spHook, "test", &spHeaders, &map[string]interface{}{}, &map[string]interface{}{}, &[]byte{})
+	if err == nil {
+		t.Fatalf("Error expected, but none returned: %s\n", s)
+	}
+	matched, _ = regexp.MatchString("(?s)unable to locate command: ..bin.echo success.*use 'pass-arguments-to-command'", b.String())
+	if !matched {
+		t.Fatalf("Unexpected log output:\n%s\n", b)
+	}
+}
+
 func TestWebhook(t *testing.T) {
 	hookecho, cleanupHookecho := buildHookecho(t)
 	defer cleanupHookecho()
 
-	config, cleanupConfig := genConfig(t, hookecho)
-	defer cleanupConfig()
+	for _, hookTmpl := range []string{"test/hooks.json.tmpl", "test/hooks.yaml.tmpl"} {
+		config, cleanupConfig := genConfig(t, hookecho, hookTmpl)
+		defer cleanupConfig()
 
-	webhook, cleanupWebhook := buildWebhook(t)
-	defer cleanupWebhook()
+		webhook, cleanupWebhook := buildWebhook(t)
+		defer cleanupWebhook()
 
-	ip, port := serverAddress(t)
-	args := []string{fmt.Sprintf("-hooks=%s", config), fmt.Sprintf("-ip=%s", ip), fmt.Sprintf("-port=%s", port), "-verbose"}
+		ip, port := serverAddress(t)
+		args := []string{fmt.Sprintf("-hooks=%s", config), fmt.Sprintf("-ip=%s", ip), fmt.Sprintf("-port=%s", port), "-verbose"}
 
-	cmd := exec.Command(webhook, args...)
-	//cmd.Stderr = os.Stderr // uncomment to see verbose output
-	cmd.Env = webhookEnv()
-	cmd.Args[0] = "webhook"
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("failed to start webhook: %s", err)
-	}
-	defer killAndWait(cmd)
-
-	waitForServerReady(t, ip, port)
-
-	for _, tt := range hookHandlerTests {
-		url := fmt.Sprintf("http://%s:%s/hooks/%s", ip, port, tt.id)
-
-		req, err := http.NewRequest("POST", url, ioutil.NopCloser(strings.NewReader(tt.body)))
-		if err != nil {
-			t.Errorf("New request failed: %s", err)
+		cmd := exec.Command(webhook, args...)
+		//cmd.Stderr = os.Stderr // uncomment to see verbose output
+		cmd.Env = webhookEnv()
+		cmd.Args[0] = "webhook"
+		if err := cmd.Start(); err != nil {
+			t.Fatalf("failed to start webhook: %s", err)
 		}
+		defer killAndWait(cmd)
 
-		for k, v := range tt.headers {
-			req.Header.Add(k, v)
-		}
+		waitForServerReady(t, ip, port)
 
-		var res *http.Response
+		for _, tt := range hookHandlerTests {
+			url := fmt.Sprintf("http://%s:%s/hooks/%s", ip, port, tt.id)
 
-		if tt.urlencoded == true {
-			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-		} else {
-			req.Header.Add("Content-Type", "application/json")
-		}
+			req, err := http.NewRequest("POST", url, ioutil.NopCloser(strings.NewReader(tt.body)))
+			if err != nil {
+				t.Errorf("New request failed: %s", err)
+			}
 
-		client := &http.Client{}
-		res, err = client.Do(req)
-		if err != nil {
-			t.Errorf("client.Do failed: %s", err)
-		}
+			for k, v := range tt.headers {
+				req.Header.Add(k, v)
+			}
 
-		body, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			t.Errorf("POST %q: failed to ready body: %s", tt.desc, err)
-		}
+			var res *http.Response
 
-		if res.StatusCode != tt.respStatus || string(body) != tt.respBody {
-			t.Errorf("failed %q (id: %s):\nexpected status: %#v, response: %s\ngot status: %#v, response: %s", tt.desc, tt.id, tt.respStatus, tt.respBody, res.StatusCode, body)
+			if tt.urlencoded == true {
+				req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+			} else {
+				req.Header.Add("Content-Type", "application/json")
+			}
+
+			client := &http.Client{}
+			res, err = client.Do(req)
+			if err != nil {
+				t.Errorf("client.Do failed: %s", err)
+			}
+
+			body, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				t.Errorf("POST %q: failed to ready body: %s", tt.desc, err)
+			}
+
+			if res.StatusCode != tt.respStatus || string(body) != tt.respBody {
+				t.Errorf("failed %q (id: %s):\nexpected status: %#v, response: %s\ngot status: %#v, response: %s", tt.desc, tt.id, tt.respStatus, tt.respBody, res.StatusCode, body)
+			}
 		}
 	}
 }
@@ -103,8 +193,8 @@ func buildHookecho(t *testing.T) (bin string, cleanup func()) {
 	return bin, func() { os.RemoveAll(tmp) }
 }
 
-func genConfig(t *testing.T, bin string) (config string, cleanup func()) {
-	tmpl := template.Must(template.ParseFiles("test/hooks.json.tmpl"))
+func genConfig(t *testing.T, bin string, hookTemplate string) (config string, cleanup func()) {
+	tmpl := template.Must(template.ParseFiles(hookTemplate))
 
 	tmp, err := ioutil.TempDir("", "webhook-config-")
 	if err != nil {
@@ -116,7 +206,9 @@ func genConfig(t *testing.T, bin string) (config string, cleanup func()) {
 		}
 	}()
 
-	path := filepath.Join(tmp, "hooks.json")
+	outputBaseName := filepath.Ext(filepath.Ext(hookTemplate))
+
+	path := filepath.Join(tmp, outputBaseName)
 	file, err := os.Create(path)
 	if err != nil {
 		t.Fatalf("Creating config template: %v", err)
@@ -521,4 +613,12 @@ env: HOOK_head_commit.timestamp=2013-03-12T08:14:29-07:00
 	{"empty payload", "bitbucket", nil, `{}`, false, http.StatusOK, `Hook rules were not satisfied.`},
 	// test with no configured http return code, should default to 200 OK
 	{"empty payload", "gitlab", nil, `{}`, false, http.StatusOK, `Hook rules were not satisfied.`},
+
+	// test capturing command output
+	{"don't capture output on success by default", "capture-command-output-on-success-not-by-default", nil, `{}`, false, http.StatusOK, ``},
+	{"capture output on success with flag set", "capture-command-output-on-success-yes-with-flag", nil, `{}`, false, http.StatusOK, `arg: exit=0
+`},
+	{"don't capture output on error by default", "capture-command-output-on-error-not-by-default", nil, `{}`, false, http.StatusInternalServerError, `Error occurred while executing the hook's command. Please check your logs for more details.`},
+	{"capture output on error with extra flag set", "capture-command-output-on-error-yes-with-extra-flag", nil, `{}`, false, http.StatusInternalServerError, `arg: exit=1
+`},
 }
