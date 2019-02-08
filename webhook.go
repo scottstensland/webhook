@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	version = "2.6.8"
+	version = "2.6.9"
 )
 
 var (
@@ -123,7 +123,7 @@ func main() {
 
 	newHooksFiles := hooksFiles[:0]
 	for _, filePath := range hooksFiles {
-		if _, ok := loadedHooksFromFiles[filePath]; ok == true {
+		if _, ok := loadedHooksFromFiles[filePath]; ok {
 			newHooksFiles = append(newHooksFiles, filePath)
 		}
 	}
@@ -235,7 +235,11 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		// parse body
 		var payload map[string]interface{}
 
+		// set contentType to IncomingPayloadContentType or header value
 		contentType := r.Header.Get("Content-Type")
+		if len(matchedHook.IncomingPayloadContentType) != 0 {
+			contentType = matchedHook.IncomingPayloadContentType
+		}
 
 		if strings.Contains(contentType, "json") {
 			decoder := json.NewDecoder(strings.NewReader(string(body)))
@@ -256,10 +260,9 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// handle hook
-		if errors := matchedHook.ParseJSONParameters(&headers, &query, &payload); errors != nil {
-			for _, err := range errors {
-				log.Printf("[%s] error parsing JSON parameters: %s\n", rid, err)
-			}
+		errors := matchedHook.ParseJSONParameters(&headers, &query, &payload)
+		for _, err := range errors {
+			log.Printf("[%s] error parsing JSON parameters: %s\n", rid, err)
 		}
 
 		var ok bool
@@ -270,7 +273,7 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 			ok, err = matchedHook.TriggerRule.Evaluate(&headers, &query, &payload, &body, r.RemoteAddr)
 			if err != nil {
 				msg := fmt.Sprintf("[%s] error evaluating hook: %s", rid, err)
-				log.Printf(msg)
+				log.Print(msg)
 				w.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprintf(w, "Error occurred while evaluating hook rules.")
 				return
@@ -347,27 +350,21 @@ func handleHook(h *hook.Hook, rid string, headers, query, payload *map[string]in
 	cmd.Dir = h.CommandWorkingDirectory
 
 	cmd.Args, errors = h.ExtractCommandArguments(headers, query, payload)
-	if errors != nil {
-		for _, err := range errors {
-			log.Printf("[%s] error extracting command arguments: %s\n", rid, err)
-		}
+	for _, err := range errors {
+		log.Printf("[%s] error extracting command arguments: %s\n", rid, err)
 	}
 
 	var envs []string
 	envs, errors = h.ExtractCommandArgumentsForEnv(headers, query, payload)
 
-	if errors != nil {
-		for _, err := range errors {
-			log.Printf("[%s] error extracting command arguments for environment: %s\n", rid, err)
-		}
+	for _, err := range errors {
+		log.Printf("[%s] error extracting command arguments for environment: %s\n", rid, err)
 	}
 
 	files, errors := h.ExtractCommandArgumentsForFile(headers, query, payload)
 
-	if errors != nil {
-		for _, err := range errors {
-			log.Printf("[%s] error extracting command arguments for file: %s\n", rid, err)
-		}
+	for _, err := range errors {
+		log.Printf("[%s] error extracting command arguments for file: %s\n", rid, err)
 	}
 
 	for i := range files {
@@ -442,7 +439,7 @@ func reloadHooks(hooksFilePath string) {
 				}
 			}
 
-			if (matchLoadedHook(hook.ID) != nil && !wasHookIDAlreadyLoaded) || seenHooksIds[hook.ID] == true {
+			if (matchLoadedHook(hook.ID) != nil && !wasHookIDAlreadyLoaded) || seenHooksIds[hook.ID] {
 				log.Printf("error: hook with the id %s has already been loaded!\nplease check your hooks file for duplicate hooks ids!", hook.ID)
 				log.Println("reverting hooks back to the previous configuration")
 				return
