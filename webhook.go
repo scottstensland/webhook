@@ -285,14 +285,6 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("\n\n query   \n[%s]\n", query)
 		log.Printf("\n\n payload \n[%s]\n", payload)
 		log.Printf("\n\n body    \n[%s]\n", string(body[:])) // converts []byte into string
-
-		// b, err := json.MarshalIndent(group, "", "  ")
-		pretty_body, err := json.MarshalIndent(string(body[:]), "", "  ")
-		if err != nil {
-			log.Println("ERROR - when printing body using json.MarshalIndent :", err)
-		}
-		log.Printf("\n\n body marshalind   \n[%s]\n", pretty_body)
-
 		log.Printf("\n")
 
 		if ok {
