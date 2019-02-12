@@ -280,21 +280,12 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// log.Printf("\n\n headers ")
-		// log.Printf(headers)
-		log.Printf("\n\n headers [%s]\n", headers)
-
-		// log.Printf("\n\n query ")
-		// log.Printf(query)
-		log.Printf("\n\n query [%s]\n", query)
-
-		// log.Printf("\n\n payload ")
-		// log.Printf(payload)
-		log.Printf("\n\n payload [%s]\n", payload)
-
-		// log.Printf("\n\n body ")
-		// log.Printf(body)
-		log.Printf("\n\n body [%s]\n", string(body[:]))
+		log.Printf("\n")
+		log.Printf("\n\n headers \n[%s]\n", headers)
+		log.Printf("\n\n querya  \n[%s]\n", query)
+		log.Printf("\n\n payload \n[%s]\n", payload)
+		log.Printf("\n\n body    \n[%s]\n", string(body[:])) // converts []byte into string
+		log.Printf("\n")
 
 		if ok {
 			log.Printf("[%s] %s hook triggered successfully\n", rid, matchedHook.ID)
