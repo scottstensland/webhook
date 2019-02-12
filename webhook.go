@@ -282,7 +282,7 @@ func hookHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("\n")
 		log.Printf("\n\n headers \n[%s]\n", headers)
-		log.Printf("\n\n querya  \n[%s]\n", query)
+		log.Printf("\n\n query   \n[%s]\n", query)
 		log.Printf("\n\n payload \n[%s]\n", payload)
 		log.Printf("\n\n body    \n[%s]\n", string(body[:])) // converts []byte into string
 		log.Printf("\n")
